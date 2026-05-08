@@ -1,0 +1,94 @@
+一、项目目标
+搭建一个 高性能、多路摄像头输入 + 零拷贝视频处理 + AI 推理 的系统，能够：
+	支持 2~4 路以上高分辨率摄像头（OV13855 / OV13850 等 MIPI CSI 摄像头）
+	实时采集、处理、AI 推理
+	输出可视化结果（GUI 或网页界面）
+	使用 RK3588 的 CPU / GPU / NPU 异构计算资源，优化延迟和吞吐量
+本项目定位类似边缘 AI 车载或安防级多摄像头网关系统，非常符合大厂研发标准。
+
+二、主要功能模块与实现任务
+1. 摄像头采集模块
+任务：
+	支持多路 MIPI CSI 摄像头（cam0/cam1/cam2）
+	高速采集 YUV/RGB 格式视频帧
+	使用 V4L2 或 RK Media API 接口
+技术点：
+	多摄像头同步采集
+	零拷贝（DMA / buffer sharing）避免 CPU 多次拷贝
+	支持 1080p/4K 视频流
+	
+2. 视频处理模块
+任务：
+	对采集的视频做必要的预处理：裁剪、缩放、颜色空间转换
+	可以做简单滤波/增强/ROI 提取
+技术点：
+	GPU / VPU 加速
+	使用 RKNN / OpenGL / OpenCL 实现硬件加速
+	支持多路视频流并行处理
+
+3. AI 推理模块
+任务：
+	对视频流进行目标检测、分割或分类
+	输出推理结果（bounding box、mask、分类标签）
+技术点：
+	使用 RK3588 内置 NPU（6TOPS）加速推理
+	支持 TensorRT / RKNN 模型
+	实现多路视频流的异步推理 pipeline
+
+4. 零拷贝与异构调度
+任务：
+	视频帧从摄像头到 GPU/NPU/CPU 处理全程零拷贝
+	多核 / 多线程调度，CPU 只负责控制与调度
+技术点：
+	使用 DMA Buffer / Video4Linux2 Buffer
+	多线程、RingBuffer、Pipeline 调度
+	CPU、GPU、NPU 异构资源合理分配
+
+5. 可视化与输出模块
+任务：
+	将原视频 + 推理结果叠加显示
+	可选择输出到 HDMI 显示器或 Web 界面
+技术点：
+	Qt / OpenGL 渲染视频 + 推理框
+	可实现多路画面拼接、缩放、叠加标签
+	提供 FPS、延迟监控面板
+
+6. 系统管理与扩展模块
+任务：
+	摄像头热插拔检测
+	支持 OTA 或动态加载模型
+	系统监控 CPU/GPU/NPU 使用率、温度
+技术点：
+	Linux 多线程 + Udev 事件监听
+	Docker/容器化部署（可选）
+	日志管理 + 性能统计
+
+三、技术栈与工具
+模块				技术/工具
+摄像头采集			V4L2, RK Media API, 多摄像头同步
+视频处理			OpenCL, OpenGL ES, RKNN Toolkit
+AI 推理				RKNN / TensorRT / ONNX Runtime
+零拷贝 & 异构调度	DMA Buffer, 多线程, Pipeline 管理
+可视化				Qt5/Qt6, OpenGL, ImGui (可选)
+系统监控			Linux shell scripts, htop, GPU/NPU profiler
+
+四、最终呈现结果
+1. 可运行的多路视频流系统：
+	2~4 路摄像头同时采集
+	实时显示在 HDMI 或桌面窗口上
+	
+2. 实时 AI 推理叠加：
+	Bounding Box / Label / Mask 实时叠加
+	支持对象检测、行为识别等
+	
+3. 高性能指标：
+	GPU/NPU 卸载，CPU 负载低
+	零拷贝，延迟 < 50ms（1080p，单路）
+	
+4. 扩展性：
+	模型热替换
+	摄像头热插拔
+	支持多种算法和多路输入
+
+
+	

@@ -1,0 +1,178 @@
+/* 
+ * DPHY 
+ * MIPI 物理层
+ * 负责把摄像头的高速差分信号转成数字码流
+ * 只管硬件传输，不管图像内容
+ */
+&csi2_dphy3 {
+	status = "disabled";
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@0 {
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			mipidphy1_in_ucam0: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&ov13850_out1>;
+				data-lanes = <1 2>;
+			};
+			
+			/* 2. OV13855的MIPI输出引脚连接到RK3588的MIPI输入引脚 */
+			mipidphy1_in_ucam1: endpoint@1 {
+				reg = <1>;
+				remote-endpoint = <&ov13855_out1>;
+				data-lanes = <1 2>;
+			};
+		};
+		port@1 {
+		        reg = <1>;
+		        #address-cells = <1>;
+		        #size-cells = <0>;
+				/* 3. D-PHY的输出总线连接到CSI-2控制器的输入总线 */
+		        csidphy1_out: endpoint@0 {
+		                reg = <0>;
+		                remote-endpoint = <&mipi4_csi2_input>;
+		        };
+		};
+	};
+};
+
+/* 
+ * I2C3总线 + SENSOR
+ * 数据源头
+ */
+&i2c3 {
+	status = "okay";// I2C3总线被启用了
+        pinctrl-names = "default";// 定义一个叫 default 的引脚配置方案
+        pinctrl-0 = <&i2c3m0_xfer>;// 对应 default 方案，绑定 I2C3 要用的具体引脚组 i2c3m0_xfer
+
+	/* 对焦马达1（地址0x0c） */
+	dw9714_p1: dw9714-p1@c {
+		compatible = "dongwoon,dw9714";
+		status = "disabled";
+		reg = <0x0c>;
+		rockchip,camera-module-index = <1>;
+		rockchip,vcm-start-current = <10>;
+		rockchip,vcm-rated-current = <85>;
+		rockchip,vcm-step-mode = <5>;
+		rockchip,camera-module-facing = "back";
+	};
+
+	ov13855_1: ov13855-1@36 {// ov13855 节点
+		compatible = "ovti,ov13855";// 驱动匹配的暗号
+		status = "disabled";// 当前状态是禁用的
+		reg = <0x36>;// I2C 地址是 0x36
+
+		// cru = Clock & Reset Unit时钟复位控制器
+		clocks = <&cru CLK_MIPI_CAMARAOUT_M2>;// 时钟来源：从时钟总控制器 cru 里，取一路叫 MIPI_CAMARAOUT_M2 的时钟
+		clock-names = "xvclk";// 时钟别名
+		pinctrl-names = "default";
+		pinctrl-0 = <&mipim1_camera2_clk>;
+
+		reset-gpios = <&gpio3 RK_PB1 GPIO_ACTIVE_HIGH>;// 硬件复位引脚连在了 GPIO3 的 PB1 令1为高电平
+		pwdn-gpios = <&gpio3 RK_PB3 GPIO_ACTIVE_HIGH>; // 掉电控制引脚连在了 GPIO3 的 PB3 令1为高电平
+		
+		/*
+		 * index：用于多摄像头切换时的索引
+		 * facing：决定图像是否需要镜像处理
+		 * name：加载对应的ISP调优参数文件
+		 * lens-name：加载镜头畸变矫正参数
+		 */
+        rockchip,camera-module-index = <1>;// 摄像头编号（系统中第2个摄像头）
+		rockchip,camera-module-facing = "back";// 朝向：back后置/front前置
+		rockchip,camera-module-name = "CMK-OT2016-FV1";// 模组型号（制造商标识）
+		rockchip,camera-module-lens-name = "default";// 镜头型号
+		lens-focus = <&dw9714_p1>;// 引用同一I2C总线上的对焦马达
+		port {
+			/* 1. OV13855的MIPI输出引脚连接到RK3588的MIPI输入引脚 */
+			ov13855_out1: endpoint {
+				remote-endpoint = <&mipidphy1_in_ucam1>;// 数据发给了 mipidphy1_in_ucam1
+				data-lanes = <1 2>;// 用了 1 号和 2 号两条 MIPI 数据线传输
+			};
+		};
+	};
+};
+
+/*
+ * CSI-2
+ * MIPI 协议层
+ * 解析 D-PHY 传过来的数据包
+ * 识别：帧开始、行开始、数据类型、校验
+ */
+&mipi4_csi2 {
+	status = "disabled";
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@0 {
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			/* 4. D-PHY的输出总线连接到CSI-2控制器的输入总线 */
+			mipi4_csi2_input: endpoint@1 {
+				reg = <1>;
+				remote-endpoint = <&csidphy1_out>;
+			};
+		};
+		port@1 {
+			reg = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			/* 5. 协议层的输出数据通道连接到CIF的输入缓冲区 */
+			mipi4_csi2_output: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&cif_mipi_in4>;
+			};
+		};
+	};
+};
+
+/*
+ * CIF 
+ * Camera Interface 控制器
+ * 负责把 CSI-2 解析好的图像数据 传给内存、传给 ISP、传给显示
+ */
+&rkcif_mipi_lvds4 {
+	status = "disabled";
+	port {
+		/* 6. 协议层的输出数据通道连接到CIF的输入缓冲区 */
+		cif_mipi_in4: endpoint {
+			remote-endpoint = <&mipi4_csi2_output>;
+		};
+	};
+};
+
+/* 
+ * SDITF
+ * 串行数据接口
+ * CIF 与 ISP 之间的 “专用数据出口 / 桥接模块”
+ */
+&rkcif_mipi_lvds4_sditf {
+	status = "disabled";
+	port {
+		/* 7. CIF的输出数据总线连接到ISP的输入端口 */
+		mipi4_lvds_sditf: endpoint {
+			remote-endpoint = <&isp1_vir1>;
+		};
+	};
+};
+
+/* 
+ * ISP
+ * 图像处理相关
+ */
+&rkisp1_vir1 {
+	status = "disabled";
+	port {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		/* 8. CIF的输出数据总线连接到ISP的输入端口 */
+		isp1_vir1: endpoint@0 {
+			reg = <0>;
+			remote-endpoint = <&mipi4_lvds_sditf>;
+		};
+	};
+};
