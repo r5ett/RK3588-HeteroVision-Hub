@@ -1,0 +1,1 @@
+f103_freertos_can_node\startup_stm32f103xb.o: startup_stm32f103xb.s
