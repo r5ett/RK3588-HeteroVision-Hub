@@ -1,0 +1,65 @@
+# Compiled binaries and objects
+*.o
+*.ko
+*.so
+*.a
+*.elf
+
+# Executables (built from source)
+can_test
+led_test
+spi_can
+spi_test
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# STM32 MDK-ARM build outputs
+*.axf
+*.lst
+*.dep
+*.htm
+*.lnp
+*.sct
+*.crf
+*.d
+*.map
+*.hex
+*.bin
+
+# STM32 build directories
+DebugConfig/
+RTE/
+*/MDK-ARM/*/  # Ignore build output subdirs in MDK projects
+
+# Temporary files
+*.swp
+*~
+*.tmp
+*.bak
+
+# Logs and debug files
+*.log
+*.out
+
+# IDE and editor files
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node.js (if any)
+node_modules/
+npm-debug.log*
+
+# Other
+*.tar.gz
+*.zip
