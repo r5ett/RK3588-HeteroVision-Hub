@@ -144,6 +144,6 @@ RK3588-HeteroVision-Hub/
 ## 九、维护与协作
 ### 9.1 更新日志
 v1.0.0：首发版本，完成基础功能开发，项目正式上线。
-### 9.3 许可证（License）
+### 9.2 许可证（License）
 本项目基于 MIT License 开源，可自由使用、修改、分发，需保留原作者版权声明。
 Copyright (c) 2026 RK3588-HeteroVision-Hub 开发者
