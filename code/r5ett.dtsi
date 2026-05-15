@@ -1,0 +1,35 @@
+// 需要在rk3588-orangepi-5-max.dts里#include "r5ett.dtsi"
+
+/ {
+    // 我们的自定义 LED 设备节点
+    ai_alarm_device {
+        // 这里的 compatible 必须和 C 代码里的 "r5ett,led_drv" 完全一致
+        compatible = "r5ett,led_drv";
+        status = "okay";
+        
+        // 绑定 Pin 18 (GPIO1_A4)
+        warning-gpios = <&gpio1 RK_PA4 GPIO_ACTIVE_HIGH>; 
+        
+        pinctrl-names = "default";
+        pinctrl-0 = <&led_pin>;
+    };
+};
+
+// ================= 引脚电气属性与复用配置 =================
+&pinctrl {
+    custom_gateway {
+        // 定义 led_pin，供上面的节点引用
+        led_pin: led-pin {
+            // 配置 1组_A4 引脚为普通 GPIO 功能 (RK_FUNC_GPIO)
+            // 并且不使用内部上下拉 (&pcfg_pull_none)，由我们的外接电路决定电平
+            rockchip,pins = <1 RK_PA4 RK_FUNC_GPIO &pcfg_pull_none>;
+        };
+    };
+};
+
+&can0 {
+    status = "okay";
+    pinctrl-names = "default";
+    // 明确指定使用 M0 组引脚 (Pin 3: RX, Pin 5: TX)
+    pinctrl-0 = <&can0m0_pins>; 
+};

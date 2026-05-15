@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全息监管网关 - 车载控制台</title>
+    <style>
+        :root {
+            --bg-color: #1e1e2f;
+            --card-bg: #27293d;
+            --text-main: #ffffff;
+            --text-muted: #9a9a9a;
+            --accent-cyan: #00f2fe;
+            --alert-red: #fd5d93;
+            --safe-green: #00f2c3;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--card-bg);
+            padding-bottom: 10px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            letter-spacing: 2px;
+            color: var(--accent-cyan);
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        /* 视频流区域 */
+        .video-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .video-card {
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+        .video-card img, .video-card video {
+            width: 100%;
+            border-radius: 8px;
+            background-color: #000;
+            aspect-ratio: 4/3;
+            object-fit: cover;
+        }
+        .video-title {
+            margin-top: 10px;
+            font-size: 16px;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status-dot {
+            height: 10px;
+            width: 10px;
+            border-radius: 50%;
+            background-color: var(--safe-green);
+        }
+        /* 数据面板区域 */
+        .data-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .data-card {
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: border 0.3s ease, box-shadow 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .data-card.danger {
+            border: 2px solid var(--alert-red);
+            animation: pulse-red 1.5s infinite;
+        }
+        .data-title {
+            font-size: 14px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 15px;
+        }
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .data-value {
+            font-weight: bold;
+            font-size: 24px;
+            color: var(--accent-cyan);
+        }
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .badge-safe { background-color: rgba(0, 242, 195, 0.2); color: var(--safe-green); }
+        .badge-danger { background-color: rgba(253, 93, 147, 0.2); color: var(--alert-red); }
+
+        /* 录像列表样式 */
+        .record-list {
+            max-height: 250px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .record-item {
+            background: #1e1e2f;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            transition: background 0.2s;
+        }
+        .record-item:hover { background: #32325d; }
+        .record-item span { color: var(--alert-red); margin-right: 5px; }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(253, 93, 147, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(253, 93, 147, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(253, 93, 147, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🚀 异构多核主动安全与全息监管网关</h1>
+        <div style="color: var(--text-muted); margin-top: 5px;">RK3588 Sensor Fusion & DVR System</div>
+    </div>
+
+    <div class="dashboard">
+        <div class="video-container">
+            <div class="video-card">
+                <img src="/mipi" id="stream-mipi" alt="MIPI 实时流">
+                <div class="video-title">
+                    <span>📷 OV13855 (实时前视)</span>
+                    <div class="status-dot"></div>
+                </div>
+            </div>
+            <div class="video-card">
+                <img src="/usb" id="stream-usb" alt="USB 实时流">
+                <div class="video-title">
+                    <span>📸 USB 摄像头 (实时座舱)</span>
+                    <div class="status-dot"></div>
+                </div>
+            </div>
+            <div class="video-card" style="grid-column: span 2; display: none;" id="playback-container">
+                <video id="video-player" controls autoplay></video>
+                <div class="video-title">
+                    <span id="playing-filename">▶️ 正在回放告警视频...</span>
+                    <button onclick="closePlayer()" style="background:var(--alert-red); color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">关闭回放</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="data-panel">
+            <div class="data-card" id="card-sensors">
+                <div class="data-title">📊 传感器融合 (CAN & SPI)</div>
+                <div class="data-row">
+                    <span>车门/警报</span>
+                    <span id="val-alarm" class="status-badge badge-safe">系统安全</span>
+                </div>
+                <div class="data-row">
+                    <span>姿态 (P/R)</span>
+                    <span class="data-value"><span id="val-pitch">0.0</span>° / <span id="val-roll">0.0</span>°</span>
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; margin-top: 5px;">
+                    <span>AX: <span id="val-ax">0.00</span>g</span>
+                    <span>AY: <span id="val-ay">0.00</span>g</span>
+                    <span>AZ: <span id="val-az">1.00</span>g</span>
+                </div>
+            </div>
+
+            <div class="data-card" id="card-history">
+                <div class="data-title">📁 历史告警录像 (已锁定证据)</div>
+                <div class="record-list" id="video-list">
+                    <div style="color: var(--text-muted); text-align: center; padding: 20px;">暂无锁定视频...</div>
+                </div>
+            </div>
+
+            <div class="data-card">
+                <div class="data-title">⚙️ 系统运行状态</div>
+                <div class="data-row">
+                    <span>AI 分析</span>
+                    <span id="val-ai" class="status-badge badge-safe">正常</span>
+                </div>
+                <div class="data-row">
+                    <span>DVR 存储</span>
+                    <span class="status-badge badge-safe">循环录制中</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. 获取传感器数据
+        async function fetchSensorData() {
+            try {
+                const response = await fetch('/sensor_data');
+                const data = await response.json();
+
+                // 更新姿态与加速度
+                document.getElementById('val-pitch').innerText = data.pitch.toFixed(1);
+                document.getElementById('val-roll').innerText = data.roll.toFixed(1);
+                document.getElementById('val-ax').innerText = data.ax.toFixed(2);
+                document.getElementById('val-ay').innerText = data.ay.toFixed(2);
+                document.getElementById('val-az').innerText = data.az.toFixed(2);
+
+                // 更新警报状态
+                const alarmEl = document.getElementById('val-alarm');
+                const sensorCard = document.getElementById('card-sensors');
+                if (data.alarm !== 0 || data.door === 1) {
+                    alarmEl.innerText = data.door === 1 ? '⚠️ 车门敞开' : '⚠️ 紧急警报';
+                    alarmEl.className = 'status-badge badge-danger';
+                    sensorCard.classList.add('danger');
+                } else {
+                    alarmEl.innerText = '系统安全';
+                    alarmEl.className = 'status-badge badge-safe';
+                    sensorCard.classList.remove('danger');
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        // 2. 更新历史录像列表
+        async function updateVideoList() {
+            try {
+                const response = await fetch('/list_records');
+                const files = await response.json();
+                const listEl = document.getElementById('video-list');
+                
+                if (files.length === 0) {
+                    listEl.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px;">暂无锁定视频...</div>';
+                    return;
+                }
+
+                listEl.innerHTML = files.map(f => `
+                    <div class="record-item" onclick="playVideo('${f}')">
+                        <div><span>🔴</span> ${f}</div>
+                        <div style="color: var(--accent-cyan)">查看 ></div>
+                    </div>
+                `).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        // 3. 播放视频
+        function playVideo(filename) {
+            const container = document.getElementById('playback-container');
+            const player = document.getElementById('video-player');
+            const title = document.getElementById('playing-filename');
+            
+            container.style.display = 'block';
+            title.innerText = `▶️ 正在回放: ${filename}`;
+            player.src = `/video/${filename}`;
+            player.play();
+            
+            // 滚动到播放器位置
+            container.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function closePlayer() {
+            const container = document.getElementById('playback-container');
+            const player = document.getElementById('video-player');
+            player.pause();
+            container.style.display = 'none';
+        }
+
+        // 启动定时器
+        setInterval(fetchSensorData, 100);    // 10Hz 更新传感器
+        setInterval(updateVideoList, 5000);   // 5s 更新一次视频列表
+        updateVideoList(); // 页面加载后立即获取一次列表
+    </script>
+</body>
+</html>
