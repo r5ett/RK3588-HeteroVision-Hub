@@ -137,7 +137,7 @@ RK3588-HeteroVision-Hub/
 | 触发警报后终端打印 `Aborted` 并闪退 | 硬件 `avc1` 编码器冲突，且被 OpenCV 致命捕获 | 检查代码中 DVR 降级逻辑是否开启（强制转为 MJPG 软编）。 |
 | 生成的报警录像文件为 0 字节或无法播放 | V4L2 写入分辨率校验未通过 | 确保写入前调用了 `cv2.resize(frame, (640, 480))` 对齐缓冲区尺寸。 |
 
-## 八九、参考文献
+## 八、参考文献
 ## [ov13855阅读指南](https://share.note.youdao.com/s/21chGfSW)
 ## [参考博客](https://blog.csdn.net/weixin_49698162?type=blog)
 
